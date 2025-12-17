@@ -1,10 +1,5 @@
 """
 FastAPI service for retrieving HRRR mean sea level pressure (MSLMA) data.
-
-Features:
-- Serves both analysis (observed) and forecasted HRRR data.
-- Converts latitude/longitude to nearest HRRR grid indices using a KD-tree.
-- Automatically refreshes Zarr datasets every hour.
 """
 
 from contextlib import asynccontextmanager
