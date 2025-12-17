@@ -1,0 +1,9 @@
+fastapi
+uvicorn[standard]
+xarray
+pydantic
+zarr
+metpy
+cartopy
+h5netcdf
+dask
