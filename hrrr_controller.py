@@ -5,7 +5,8 @@ FastAPI service for retrieving HRRR mean sea level pressure (MSLMA) data.
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException
 import xarray as xr
-from pydantic.v1 import BaseModel
+from pandas.errors import InvalidIndexError
+from pydantic import BaseModel
 import os
 from datetime import datetime, timedelta
 import asyncio
@@ -162,6 +163,7 @@ app = FastAPI(lifespan=lifespan)
 class Variable(BaseModel):
     name: str
     units: str
+    values: dict
 
 class Point(BaseModel):
     type: str = "Point"
@@ -179,15 +181,15 @@ class FeatureCollection(BaseModel):
 # -------------------------------------
 # API Endpoints
 # -------------------------------------
-@app.get("/pressure/{lat},{lon}")
-def get_pressure(lat: float, lon: float):
+@app.get("/forecast/{lat},{lon}")
+def get_forecast(lat: float, lon: float):
 
     """
-    Retrieve HRRR mean sea level pressure (MSLMA) for a given lat/lon.
+    Retrieve historical and forecasted weather data for a given lat/lon.
 
-    :param lat: latitude value (21.138 <= lat <= 52.61565)
-    :param lon: longitude value (-134.09613 <= lon <= -60.91784)
-    :return: Previous and forecasted Mean Sea Level Pressure values at the given coordinates.
+    :param lat: latitude value (21.138 <= lat <= 52.61565).
+    :param lon: longitude value (-134.09613 <= lon <= -60.91784).
+    :return: Historical and forecasted weather data at the given coordinates.
     """
     # Validate coordinates
     if not (lat_min <= lat <= lat_max) or not (lon_min <= lon <= lon_max):
@@ -223,17 +225,19 @@ def get_pressure(lat: float, lon: float):
         time_str = f.split("z_")[0]
         dt = datetime.strptime(time_str, "%Y%m%d_%H")
         ds = datasets[f]
-        pressures[dt.isoformat()] = to_safe_float(pa_to_inhg(
-            ds.MSLMA.sel(y=lat, x=lon, method="nearest").values.item())
-        )
+        try:
+            value = to_safe_float(pa_to_inhg(ds.MSLMA.sel(y=lat, x=lon, method="nearest").values.item()))
+        except (ValueError, InvalidIndexError, KeyError):
+            value = None
 
-    # Sort by timestamp
+        pressures[dt.isoformat()] = value
+
+            # Sort by timestamp
     sorted_pressures = {k: pressures[k] for k in sorted(pressures)}
 
     return Feature(
         geometry = Point(coordinates=[lon, lat]),
         properties={
-            "variable": Variable(name="mean_sea_level_pressure", units="inHg"),
-            "values": sorted_pressures
+            "MSLMA": Variable(name="mean_sea_level_pressure", units="inHg", values=sorted_pressures),
         }
     )
