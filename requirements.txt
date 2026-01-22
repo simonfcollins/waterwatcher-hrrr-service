@@ -6,4 +6,5 @@ zarr
 metpy
 cartopy
 h5netcdf
+h5py
 dask

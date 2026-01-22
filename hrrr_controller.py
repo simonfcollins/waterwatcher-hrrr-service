@@ -1,5 +1,5 @@
 """
-FastAPI service for retrieving HRRR mean sea level pressure (MSLMA) data.
+FastAPI service for retrieving HRRR forecast data.
 """
 
 from contextlib import asynccontextmanager
@@ -207,6 +207,7 @@ def get_forecast(lat: float, lon: float):
         if not anl_list or not fcst_list:
             raise HTTPException(status_code=500, detail="We've misplaced something")
 
+    x, y = projection.transform_point(lon, lat, src_crs=ccrs.PlateCarree())
     pressures = {}
 
     # Parse forecasted values from forecast file
@@ -214,7 +215,7 @@ def get_forecast(lat: float, lon: float):
     time_str = fcst_file.split("z_")[0]
     start_dt = datetime.strptime(time_str, "%Y%m%d_%H")
     ds = datasets[fcst_file]
-    pressure_fcst = ds.MSLMA.sel(y=lat, x=lon, method="nearest").values
+    pressure_fcst = ds.MSLMA.metpy.sel(x=x, y=y, method="nearest").values
 
     for p in pressure_fcst:
         pressures[start_dt.isoformat()] = to_safe_float(pa_to_inhg(p))
@@ -226,7 +227,7 @@ def get_forecast(lat: float, lon: float):
         dt = datetime.strptime(time_str, "%Y%m%d_%H")
         ds = datasets[f]
         try:
-            value = to_safe_float(pa_to_inhg(ds.MSLMA.sel(y=lat, x=lon, method="nearest").values.item()))
+            value = to_safe_float(pa_to_inhg(ds.MSLMA.metpy.sel(y=y, x=x, method="nearest").values.item()))
         except (ValueError, InvalidIndexError, KeyError):
             value = None
 
