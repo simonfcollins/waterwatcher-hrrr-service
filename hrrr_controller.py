@@ -124,19 +124,6 @@ def refresh_datasets() -> None:
                 ds.close()
         current_datasets = new_datasets
 
-
-async def dataset_refresher() -> None:
-    """
-    Background task to periodically refresh datasets every hour.
-
-    :return: Void
-    """
-    while True:
-        refresh_datasets()
-        print("Datasets refreshed.")
-        await asyncio.sleep(1800)
-
-
 # -------------------------------------
 # FastAPI Lifespan
 # -------------------------------------
@@ -147,9 +134,7 @@ async def lifespan(app: FastAPI):
     and start the refresher background task.
     """
     refresh_datasets()
-    refresher_task = asyncio.create_task(dataset_refresher())
     yield
-    refresher_task.cancel()
     # Close all datasets on shutdown
     for ds in current_datasets.values():
         ds.close()
@@ -242,3 +227,8 @@ def get_forecast(lat: float, lon: float):
             "MSLMA": Variable(name="mean_sea_level_pressure", units="inHg", values=sorted_pressures),
         }
     )
+
+@app.post("/refresh")
+async def refresh():
+    refresh_datasets()
+    return {"status": "datasets refreshed"}
