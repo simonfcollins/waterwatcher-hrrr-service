@@ -9,7 +9,6 @@ from pandas.errors import InvalidIndexError
 from pydantic import BaseModel
 import os
 from datetime import datetime, timedelta
-import asyncio
 import threading
 from typing import Dict, Optional, List
 import math
@@ -230,5 +229,10 @@ def get_forecast(lat: float, lon: float):
 
 @app.post("/refresh")
 async def refresh():
+    """
+    Post endpoint to reload HRRR datasets.
+
+    :return: Message signifying a successful refresh.
+    """
     refresh_datasets()
     return {"status": "datasets refreshed"}
